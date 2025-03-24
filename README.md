@@ -1,172 +1,194 @@
-# simple-data-lake-with-awsglue
+# Data Lake Processing with AWS Glue and Athena
 
-# Simple Data Lake with AWS Glue
-
-This project demonstrates a basic data lake implementation using Amazon S3 for storage, AWS Glue for ETL and data cataloging, and Amazon Athena for querying.  It simulates a scenario where you process raw Amazon review data and product metadata.
+This project demonstrates a simple data lake implementation on AWS, focusing on processing Amazon review and product metadata. It covers data ingestion, transformation, cataloging, and querying using AWS Glue, Amazon S3, and Amazon Athena.
 
 ## Project Overview
 
-This project simulates a data engineering task for a retailer specializing in scale models.  You'll be working with Amazon review data (toys and games category) and product metadata. The goal is to clean, transform, and prepare this data for analysis, making it accessible via SQL queries using Amazon Athena.
+This project simulates a data engineering task for a retailer analyzing Amazon product reviews and metadata (specifically for the "Toys & Games" category). Raw data (JSON format) is ingested into an S3 data lake, transformed using AWS Glue ETL jobs (written in PySpark), and stored in Parquet format. An AWS Glue Crawler populates the Glue Data Catalog, enabling SQL queries via Amazon Athena. The project also explores data partitioning and compression.
 
-The project involves the following steps:
+## Architecture
 
-1.  **Raw Data Exploration:** Exploring sample datasets of customer reviews and product metadata (JSON format).
-2.  **Data Transformation (Python):** Implementing Python functions to clean and transform the raw data, preparing it for efficient storage and querying.
-3.  **AWS Glue ETL Jobs:** Creating and running AWS Glue ETL jobs (using PySpark) to process the full datasets. These jobs utilize the transformation functions you developed. The processed data is stored in Parquet format in S3.
-4.  **AWS Glue Data Catalog:** Creating and running an AWS Glue Crawler to automatically discover the schema of the processed data and populate the AWS Glue Data Catalog.
-5.  **Data Querying with Amazon Athena:** Using Amazon Athena to execute SQL queries against the processed data stored in S3, leveraging the metadata in the Glue Data Catalog.
-6. **Optional Experiments**: Partitioning and Compression.
+![Data Lake Architecture](images/data_lake.png)
 
-## Project Structure
+This project utilizes the following AWS services:
 
-The project directory is organized as follows:
-simple-data-lake/
-├── README.md               <- This file
-├── scripts/
-│   └── setup.sh            <- Setup script (likely for environment setup)
-├── terraform/
-│   ├── assets/
-│   │   ├── de-c3w2-reviews-transform-job.py   <- Glue ETL script for reviews
-│   │   └── de-c3w2-metadata-transform-job.py  <- Glue ETL script for metadata
-│   └── glue.tf             <- Terraform configuration for Glue resources
-├── images/
-│   └── data_lake.png     <- Architecture diagram
-├── .aws/                   <- (Potentially) AWS configuration files (should be ignored by Git)
-├── errors.txt            <- For potential terrafrom error debugging
-└── C3_W2_Lab_1_Data_Lake_Solution.ipynb <- Jupyter Notebook with the main project.
+*   **Amazon S3:** Used as the data lake for storing both raw and processed data.
+*   **AWS Glue:** Used for ETL processing and data cataloging.
+    *   **Glue ETL Jobs:** PySpark scripts that transform the raw JSON data into Parquet format.
+    *   **Glue Crawler:** Automatically discovers the schema of the processed data and populates the Glue Data Catalog.
+*   **Amazon Athena:** Used for interactive SQL queries against the processed data in S3.
+*   **AWS IAM:** Used for managing permissions for Glue jobs and the crawler.
+* **Terraform**: Used to define infrastructure.
 
+## Data Sources
+
+The project uses two datasets from the Amazon Customer Reviews Dataset:
+
+*   **Reviews Data:**  `reviews_Toys_and_Games_5.json.gz` (Full dataset) and `reviews_Toys_and_Games_sample.json.gz` (Sample). Contains customer reviews, including reviewer ID, product ID (ASIN), review text, rating, and timestamps.
+*   **Product Metadata:** `meta_Toys_and_Games.json.gz` (Full dataset) and `meta_Toys_and_Games_sample.json.gz` (Sample). Contains product information, including ASIN, title, description, price, brand, and sales rank.
+
+The data is stored in the following S3 bucket: `s3://<YOUR_BUCKET_NAME>/` where `<YOUR_BUCKET_NAME>` is a unique bucket name created during setup.
+
+**Data Schema (Reviews):**
+
+| Column Name     | Data Type | Description                                      |
+| --------------- | --------- | ------------------------------------------------ |
+| `reviewerID`    | STRING    | Unique ID of the reviewer.                       |
+| `asin`          | STRING    | Unique ID of the product (ASIN).                 |
+| `reviewerName`  | STRING    | Name of the reviewer.                             |
+| `helpful`       | ARRAY     | Helpfulness rating (e.g., \[2, 3] = 2 out of 3). |
+| `reviewText`    | STRING    | Text of the review.                               |
+| `overall`       | DOUBLE    | Rating of the product (1-5).                       |
+| `summary`       | STRING    | Summary of the review.                            |
+| `unixReviewTime`| INT       | Time of the review (Unix timestamp).             |
+| `reviewTime`    | STRING    | Time of the review (raw string format).           |
+
+**Data Schema (Metadata):**
+
+| Column Name      | Data Type | Description                                           |
+| ---------------- | --------- | ----------------------------------------------------- |
+| `asin`           | STRING    | Unique ID of the product (ASIN).                      |
+| `description`    | STRING    | Description of the product.                            |
+| `title`          | STRING    | Name of the product.                                  |
+| `price`          | DOUBLE    | Price of the product.                                 |
+| `imUrl`          | STRING    | URL of the product image.                             |
+| `related`        | MAP       | Related products (also_bought, also_viewed, etc.).     |
+| `salesRank`      | MAP       | Sales rank information.                               |
+| `brand`          | STRING    | Brand name.                                           |
+| `categories`     | ARRAY     | List of categories the product belongs to.            |
 
 ## Prerequisites
 
-*   An AWS account with access to the following services:
-    *   S3 (Simple Storage Service)
-    *   AWS Glue
-    *   Amazon Athena
-    *   IAM (Identity and Access Management)
-*   Basic familiarity with Python and Pandas.
-*   Basic familiarity with SQL.
+*   An AWS account with access to S3, Glue, Athena, and IAM.
+*   Python 3.7+
+*   AWS CLI installed and configured.
 *   Terraform installed and configured.
-*  AWS CLI installed and configured.
-* Jupyter Notebook.
+*   `boto3`, `awswrangler`, and `pandas` Python libraries.
+*  Jupyter Notebook.
 
 ## Setup and Execution
 
-1.  **AWS Account and Credentials:**
-    *   Ensure you have an active AWS account. The AWS Free Tier is sufficient for this lab.
-    *   Configure your AWS credentials (access key ID and secret access key) using the AWS CLI or environment variables.  The provided `setup.sh` script likely handles some of this setup.
+1.  **Configure AWS Credentials:** Ensure your AWS CLI is configured with appropriate credentials.
 
-2.  **Clone the Repository (Hypothetical - since this is a lab):**
-    ```bash
-    git clone <repository_url>
-    cd simple-data-lake
-    ```
-
-3.  **Explore the Raw Data (Exercises 1 & 2):**
-    *   Open the Jupyter Notebook `C3_W2_Lab_1_Data_Lake_Solution.ipynb`.
-    *   Run the provided code cells to load and explore the sample datasets (`reviews_Toys_and_Games_sample.json.gz` and `meta_Toys_and_Games_sample.json.gz`).
-    *   Complete Exercises 1 and 2 to familiarize yourself with the data structure.
-
-4.  **Implement Data Transformation Functions (Exercises 3 & 4):**
-    *   Complete the `process_review()` function in the notebook (Exercise 3).
-    *   Complete the `process_metadata()` function in the notebook (Exercise 4).
-    *   These functions define the data cleaning and transformation logic.
-
-5.  **Prepare Glue ETL Scripts (Exercises 5 & 6):**
-    *   Open the provided Glue ETL scripts:
-        *   `terraform/assets/de-c3w2-reviews-transform-job.py`
-        *   `terraform/assets/de-c3w2-metadata-transform-job.py`
-    *   Complete the `transform()` function in *each* script by copying the relevant code from Exercises 3 and 4.
-    *   *Save the changes* to these files.
-    *   Upload script to S3 bucket:
-        ```bash
-          aws s3 cp ./terraform/assets/de-c3w2-reviews-transform-job.py s3://{SCRIPTS_BUCKET_NAME}/de-c3w2-reviews-transform-job.py
-          aws s3 cp ./terraform/assets/de-c3w2-metadata-transform-job.py s3://{SCRIPTS_BUCKET_NAME}/de-c3w2-metadata-transform-job.py
-         ```
-
-6.  **Deploy AWS Glue Jobs with Terraform:**
+2.  **Deploy Infrastructure (Terraform):**
     *   Navigate to the `terraform` directory: `cd terraform`
     *   Initialize Terraform: `terraform init`
     *   Review the Terraform plan: `terraform plan`
-    *   Apply the Terraform configuration: `terraform apply` (Type `yes` and press Enter to confirm). This creates the Glue jobs and necessary IAM roles. Note down the `glue_role`, `reviews_glue_job` and `metadata_glue_job` from the output.
+    *   Apply the Terraform configuration: `terraform apply` (Type `yes` and press Enter). *Note the output values: `glue_role`, `reviews_glue_job`, `metadata_glue_job`.*
 
-7.  **Run AWS Glue ETL Jobs:**
-    *   Execute the Glue jobs using the AWS CLI (replace `<GLUE-JOB-NAME>` with the actual job names from the Terraform output):
+3.  **Upload Glue Scripts to S3:**
+    *   Copy the provided Glue scripts to your S3 scripts bucket. Replace `<SCRIPTS_BUCKET_NAME>` with the actual bucket name:
+    ```bash
+    aws s3 cp ./terraform/assets/de-c3w2-reviews-transform-job.py s3://<SCRIPTS_BUCKET_NAME>/de-c3w2-reviews-transform-job.py
+    aws s3 cp ./terraform/assets/de-c3w2-metadata-transform-job.py s3://<SCRIPTS_BUCKET_NAME>/de-c3w2-metadata-transform-job.py
+    ```
+
+4.  **Run Glue ETL Jobs:**
+    *   Run the Glue jobs using the AWS CLI (replace `<GLUE-JOB-NAME>` with the actual job names from the Terraform output):
         ```bash
         aws glue start-job-run --job-name <GLUE-JOB-NAME> | jq -r '.JobRunId'
         ```
-    *   Check the status of the jobs (replace `<GLUE-JOB-NAME>` and `<JOB-RUN-ID>`):
+        Example:
+        ```bash
+        aws glue start-job-run --job-name de-c3w2lab1-reviews-etl-job | jq -r '.JobRunId'
+        aws glue start-job-run --job-name de-c3w2lab1-metadata-etl-job | jq -r '.JobRunId'
+        ```
+
+    *   Check job status (replace `<GLUE-JOB-NAME>` and `<JOB-RUN-ID>`):
         ```bash
         aws glue get-job-run --job-name <GLUE-JOB-NAME> --run-id <JOB-RUN-ID> --output text --query "JobRun.JobRunState"
         ```
-        Wait for the jobs to complete with a `SUCCEEDED` status.
+        Wait for both jobs to reach the `SUCCEEDED` state.
 
-8.  **Create and Run AWS Glue Crawler (Exercise 7):**
-    *   Complete Exercise 7 in the Jupyter Notebook to create and configure the Glue crawler.  This involves using the `boto3` library to interact with the Glue API.  *Make sure to use the correct IAM role and S3 paths for your transformed data.*
-     ```python
+5.  **Create and Run Glue Crawler:**
+      * Create Glue crawler using boto3
+
+        ```python
+        DATABASE_NAME = "de-c3w2lab1-aws-reviews" # Or any database name
         glue_client = boto3.client('glue',region_name="us-east-1")
         configuration= {"Version": 1.0,"Grouping": {"TableGroupingPolicy": "CombineCompatibleSchemas" }}
 
         response = glue_client.create_crawler(
             Name='de-c3w2lab1-crawler',
-            Role= '<GLUE_ROLE>', # Paste the value here
-            DatabaseName=DATABASE_NAME, 
+            Role= '<GLUE_ROLE>', # Paste Glue Role Here
+            DatabaseName=DATABASE_NAME,
             Description= 'Amazon Reviews for Toys',
-            Targets={ 
-                'S3Targets': [ 
-                    { 
+            Targets={
+                'S3Targets': [
+                    {
                         'Path': f's3://{BUCKET_NAME}/processed_data/snappy/partition_by_year_month/toys_reviews/',
                     },
-                    { 
+                    {
                         'Path': f's3://{BUCKET_NAME}/processed_data/snappy/partition_by_sales_category/toys_metadata/',
-                    } 
-                ]} 
+                    }
+                ]}
+
             )
-      ```
-    *   Start the crawler:
-         ```
-           response = glue_client.start_crawler(Name='de-c3w2lab1-crawler')
-         ```
-    *  Verify table creation.
+        ```
+     *   Start the crawler:
+        ```bash
+        aws glue start-crawler --name de-c3w2lab1-crawler
+        ```
+        *   Check that the crawler created the tables:
+        ```python
+         import awswrangler as wr
+         wr.catalog.tables(database=DATABASE_NAME)
+        ```
 
-9.  **Query Data with Amazon Athena:**
-    *   Use the provided SQL queries in the notebook (Section 6) to query the processed data using Amazon Athena.  These queries demonstrate how to join data from the two tables and perform aggregations.
+6.  **Query Data with Athena:**
 
-10. **Optional Experiments (Section 7):**
-    *   Explore the effects of different compression algorithms (Snappy, Gzip, uncompressed) and partitioning strategies on storage size and query performance.
+    *   Open the Amazon Athena console.
+    *   Select the database created by the crawler (e.g., `de-c3w2lab1-aws-reviews`).
+    *   Run SQL queries against the created tables (e.g., `toys_reviews`, `toys_metadata`).
 
-11. **Clean Up (Section 8):**
-     *   Run `terraform destroy` in terraform folder to delete all created resources.
+    **Example Queries:**
 
-**Data Sources:**
+    *   **Top 5 reviewed products:**
 
-*   **Amazon Customer Reviews Dataset:** [https://s3.amazonaws.com/amazon-reviews-pds/readme.html](https://s3.amazonaws.com/amazon-reviews-pds/readme.html)
-*   **SNAP (Stanford Large Network Dataset Collection):** [https://snap.stanford.edu/data/](https://snap.stanford.edu/data/)
+        ```sql
+        SELECT met.title, count(distinct toy.reviewerid) as review_count
+        FROM toys_metadata met
+        LEFT JOIN toys_reviews toy
+        ON met.asin = toy.asin
+        WHERE met.title <> ''
+        GROUP BY met.title
+        ORDER BY count(distinct toy.reviewerid) DESC
+        LIMIT 5;
+        ```
 
-**AWS Services Used:**
+    *   **Top 10 products by average rating (at least 1000 reviews):**
 
-*   **Amazon S3:** Data lake storage.
-*   **AWS Glue:** ETL service and Data Catalog.
-*   **AWS Glue Crawler:** Automated schema discovery.
-*   **Amazon Athena:** Serverless SQL query engine.
-*   **IAM:** Identity and Access Management (for permissions).
-*   **Terraform:** Infrastructure as Code (IaC) for resource provisioning.
+        ```sql
+        SELECT met.title, met.sales_category, avg(toy.overall) as review_avg
+        FROM toys_metadata met
+        LEFT JOIN toys_reviews toy
+        ON met.asin = toy.asin
+        GROUP BY met.title, met.sales_category
+        HAVING count(distinct toy.reviewerid) > 1000
+        ORDER BY avg(toy.overall) DESC
+        LIMIT 10;
+        ```
+    * **Average rating and number of product by brand**:
+       ```sql
+        SELECT met.brand, count(distinct met.asin) as product_count, avg(toy.overall) as review_avg
+        FROM toys_metadata met
+        LEFT JOIN toys_reviews toy
+        ON met.asin = toy.asin
+        WHERE met.brand <> ''
+        GROUP BY met.brand
+        ORDER BY count(distinct toy.asin) DESC
+        LIMIT 10;
+       ```
 
-**Key Concepts:**
+## Troubleshooting
 
-*   Data Lake
-*   ETL (Extract, Transform, Load)
-*   Schema-on-Read
-*   Data Catalog
-*   Serverless Computing
-*   Parquet File Format
-*   Data Partitioning
-*   Data Compression
-*   Infrastructure as Code (IaC)
+*   **Glue Job Failures:** Check the Glue job logs in the AWS Management Console or CloudWatch Logs for error messages. Common issues include incorrect S3 paths, IAM permissions, or errors in the PySpark code.
+*   **Athena Query Errors:** Verify table and column names in your SQL queries. Ensure the Glue crawler has run successfully and populated the Data Catalog.
+* **Terraform issues:** use `-no-color  2> errors.txt`
 
-**Troubleshooting**
-*   **Terraform Errors:** If you encounter errors during `terraform apply`, carefully review the error messages. Common issues include incorrect AWS credentials, syntax errors in the Terraform configuration files, or resource naming conflicts. Use `-no-color  2> errors.txt` to catch the errors.
-*   **Glue Job Failures:** If a Glue job fails, check the job logs in the AWS Glue console (or CloudWatch Logs) for detailed error messages.  Common issues include incorrect S3 paths, missing IAM permissions, or errors in your PySpark code.
-*  **Crawler Issues**: Crawler might not create tables due to perimission, incorrect path, or data format.
-* **Athena Query Errors:** If an Athena query fails, check the query syntax and ensure that the table names and column names are correct. Also, verify that the Glue Data Catalog contains the correct metadata for your data.
+## Cleanup
 
-This comprehensive README.md file provides a clear and well-organized guide to the project, making it 
+To remove all resources created by this project, run the following command from the `terraform` directory:
+
+```bash
+terraform destroy

@@ -1,6 +1,6 @@
 # Data Lake Processing with AWS Glue and Athena
 
-This project demonstrates a simple data lake implementation on AWS, focusing on processing Amazon review and product metadata. It covers data ingestion, transformation, cataloging, and querying using AWS Glue, Amazon S3, and Amazon Athena.
+This project demonstrates a data lake implementation on AWS, focusing on processing Amazon review and product metadata. It covers data ingestion, transformation, cataloging, and querying using AWS Glue, Amazon S3, and Amazon Athena.
 
 ## Project Overview
 

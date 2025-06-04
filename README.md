@@ -1,7 +1,6 @@
 # AWS Data Pipeline for Product Review Analysis (Glue, PySpark, S3, Athena & Terraform)
 
-This project demonstrates my ability to design, implement, and manage an end-to-end, scalable data processing pipeline on AWS. I engineered a solution to ingest, transform, catalog, and analyze Amazon product review and metadata JSON datasets (specifically for the "Toys & Games" category), making insights readily available via SQL queries. This project was developed to gain practical, hands-on experience with core AWS data services and infrastructure automation.
-
+This project demonstrates my ability to design, implement, and manage an end-to-end, scalable data processing pipeline on AWS. I engineered a solution to ingest, transform, catalog, and analyze Amazon product review and metadata JSON datasets (specifically for the "Toys & Games" category), making insights readily available via SQL queries.
 ![Architecture Diagram](./images/data_lake.png)
 
 ## Key Achievements & Skills Demonstrated:

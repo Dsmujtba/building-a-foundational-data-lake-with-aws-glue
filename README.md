@@ -108,7 +108,6 @@ This project enabled the extraction of various insights from the processed Amazo
     LIMIT 10;
     ```
 
-*(Note: Ensure the table names like `toys_metadata` and `toys_reviews` and any specific column names used in the queries (e.g., `met.sales_category`) exactly match what your Glue Crawler created in the AWS Glue Data Catalog for this project.)*
 
 ## Technologies Used:
 
